@@ -2,6 +2,20 @@
 
 require_once 'familyfriendly.civix.php';
 
+
+function familyfriendly_civicrm_alterContent(  &$content, $context, $tplName, &$object ){
+	
+	if($context == 'page' && $tplName == 'CRM/Contact/Page/View/Summary.tpl'){
+	
+		require_once('utils/FamilyTools.php');
+		$relTools = new FamilyTools();
+		$contact_id = $_GET["cid"];
+		$relTools->get_extra_household_info($contact_id , $content);
+	
+	}	
+	
+}
+
 /**
  * Implements hook_civicrm_config().
  *
