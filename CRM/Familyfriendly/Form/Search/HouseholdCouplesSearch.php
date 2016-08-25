@@ -357,10 +357,32 @@ SELECT ".$outer_select." FROM ( SELECT $select
 		}
 		 
 		 
+		
+		$tmp_hh_rel_ids_arr = array();
+		
+		$result = civicrm_api3('RelationshipType', 'get', array(
+				'sequential' => 1,
+				'name_a_b' => "Household Member of",
+		));
+		if( $result['is_error'] == 0 && $result['count'] == 1 ){
+			$tmp_hh_rel_ids_arr[] = $result['id'];
+		}
+			
+		
+		$result = civicrm_api3('RelationshipType', 'get', array(
+				'sequential' => 1,
+				'name_a_b' => "Head of Household for",
+		));
+		if( $result['is_error'] == 0 && $result['count'] == 1 ){
+			$tmp_hh_rel_ids_arr[] = $result['id'];
+		}
+		 
+		
+		$tmp_rel_type_ids = implode(", ", $tmp_hh_rel_ids_arr );
 	
 	
-		//$tmp_rel_type_ids = "6,7";  //  Id for household member of, and head of household relationship types
-		$tmp_rel_type_ids = "7, 6";   // Household member of , Head of Household
+		
+		//$tmp_rel_type_ids = "7, 6";   // Household member of , Head of Household
 		$tmp_from_sql_hh_join = " LEFT JOIN civicrm_relationship rel ON contact_a.id = rel.contact_id_a AND rel.is_active = 1 AND rel.relationship_type_id IN ( ".$tmp_rel_type_ids." ) ";
 		 
 		/*
