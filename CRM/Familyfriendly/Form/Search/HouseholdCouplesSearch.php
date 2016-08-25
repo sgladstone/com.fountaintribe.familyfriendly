@@ -69,7 +69,7 @@ class CRM_Familyfriendly_Form_Search_HouseholdCouplesSearch extends CRM_Contact_
 		/**
 		 * You can define a custom title for the search form
 		 */
-		$this->setTitle('Couples and Households Listing');
+		$this->setTitle('Households and Couples Search');
 	
 		/**
 		 * Define the search form fields here
