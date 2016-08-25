@@ -1,10 +1,9 @@
 <?php
 
-require_once 'CRM/Contact/Form/Search/Interface.php';
 
 
-class CRM_Contact_Form_Search_Custom_ChildToAdultSearch
-implements CRM_Contact_Form_Search_Interface {
+class CRM_Familyfriendly_Form_Search_ChildToAdultSearch
+extends CRM_Contact_Form_Search_Custom_Base implements CRM_Contact_Form_Search_Interface {
 
 	protected $_formValues;
 	protected $_tableName = null;
