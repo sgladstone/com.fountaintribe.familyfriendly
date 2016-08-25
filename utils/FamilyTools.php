@@ -9,7 +9,9 @@ class FamilyTools{
 		//print_r($object);
 		//print "<br><br>Contact id: ".$_GET["cid"];
 		//	$contact_id = $_GET["cid"];
-	
+		$tmp_hh_id = "";
+		$tmp_contact_type = "";
+		
 		if(strlen($contact_id) == 0){
 			return;
 		}
@@ -84,11 +86,13 @@ class FamilyTools{
 			if( $tmp_contact_type == 'Individual'){
 				$line1 = "Part of the Household: <b><a href='/civicrm/contact/view?reset=1&cid=".$tmp_hh_id."'>".$tmp_hh_name."</b></a>";
 				$person_is_part_of_hh = true;
+			}else{
+				$line1 = "";
 			}
 	
 			$tmp_extra_info = $line1;
 	
-			$endDate = CRM_Utils_Date::processDate( $this->_formValues['end_date'] );
+			/* $endDate = CRM_Utils_Date::processDate( $this->_formValues['end_date'] );
 			if ( $endDate ) {
 				$yyyy = substr( $endDate , 0, 4);
 				$mm = substr( $endDate , 4, 2);
@@ -100,10 +104,15 @@ class FamilyTools{
 				$age_cutoff_date = "now()";
 				 
 			}
-			 
+			 */
+			$age_cutoff_date = "now()";
+			
 			$tmp_age_calc = "((date_format($age_cutoff_date,'%Y') - date_format(c.birth_date,'%Y')) -
 			(date_format($age_cutoff_date,'00-%m-%d') < date_format(c.birth_date,'00-%m-%d'))) ";
 	
+			
+			$family = array();
+			
 			if( strlen( $tmp_hh_id) > 0 ){
 				$sql_family = "SELECT distinct(c.id) as contact_id , c.display_name, ".$tmp_age_calc." as age
   		from civicrm_relationship r ,
@@ -119,7 +128,7 @@ class FamilyTools{
 	
 				$dao_family =& CRM_Core_DAO::executeQuery( $sql_family,   CRM_Core_DAO::$_nullArray ) ;
 					
-				$family = array();
+				
 				while($dao_family->fetch()){
 						
 					$cur_age = $dao_family->age;
