@@ -11,8 +11,8 @@ return array (
     'params' => 
     array (
       'version' => 3,
-      'label' => 'HouseholdCouplesSearch',
-      'description' => 'HouseholdCouplesSearch (com.fountaintribe.familyfriendly)',
+      'label' => 'Households and Couples Search',
+      'description' => 'Households and Couples Search (com.fountaintribe.familyfriendly)',
       'class_name' => 'CRM_Familyfriendly_Form_Search_HouseholdCouplesSearch',
     ),
   ),
