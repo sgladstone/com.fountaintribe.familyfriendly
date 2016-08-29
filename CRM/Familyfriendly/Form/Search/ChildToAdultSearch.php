@@ -265,7 +265,7 @@ extends CRM_Contact_Form_Search_Custom_Base implements CRM_Contact_Form_Search_I
 		return $dao->N;
 	}
 	 
-	function contactIDs( $offset = 0, $rowcount = 0, $sort = null) {
+	function contactIDs( $offset = 0, $rowcount = 0, $sort = null , $returnSQL = false) {
 		return $this->all( $offset, $rowcount, $sort, false, true );
 	}
 	 
