@@ -11,6 +11,7 @@ class FamilyTools{
 		//	$contact_id = $_GET["cid"];
 		$tmp_hh_id = "";
 		$tmp_contact_type = "";
+		$family_str = ""; 
 		
 		if(strlen($contact_id) == 0){
 			return;
