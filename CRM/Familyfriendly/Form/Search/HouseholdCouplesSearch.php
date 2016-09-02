@@ -77,17 +77,93 @@ class CRM_Familyfriendly_Form_Search_HouseholdCouplesSearch extends CRM_Contact_
 	
 	
 	
-		require_once('utils/CustomSearchTools.php');
-		$searchTools = new CustomSearchTools();
+		//require_once('utils/CustomSearchTools.php');
+		//$searchTools = new CustomSearchTools();
 		//$group_ids = $searchTools->getRegularGroupsforSelectList();
+		
+		$group_ids = array();
+		
+		$group_result = civicrm_api3('Group', 'get', array(
+				'sequential' => 1,
+				'is_active' => 1,
+				'is_hidden' => 0,
+				'options' => array('sort' => "title"),
+		));
+		
+		if( $group_result['is_error'] == 0 ){
+			$tmp_api_values = $group_result['values'];
+			foreach($tmp_api_values as $cur){
+				$grp_id = $cur['id'];
+		
+				$group_ids[$grp_id] = $cur['title'];
+		
+		
+			}
+		}
+		
+		
+		// get membership ids and org contact ids.
+		$mem_ids = array();
+		$org_ids = array();
+		$api_result = civicrm_api3('MembershipType', 'get', array(
+				'sequential' => 1,
+				'is_active' => 1,
+				'options' => array('sort' => "name"),
+		));
+		
+		if( $api_result['is_error'] == 0 ){
+			$tmp_api_values = $api_result['values'];
+			foreach($tmp_api_values as $cur){
+		
+				$tmp_id = $cur['id'];
+				$mem_ids[$tmp_id] = $cur['name'];
+				 
+				$org_id = $cur['member_of_contact_id'];
+				// get display name of org
+				$result = civicrm_api3('Contact', 'getsingle', array(
+						'sequential' => 1,
+						'id' => $org_id ,
+				));
+				$org_ids[$org_id] = $result['display_name'];
+		
+				 
+			}
+		
+		}
 		 
-		$group_ids =   CRM_Core_PseudoConstant::group();
+		$select2style = array(
+				'multiple' => TRUE,
+				'style' => 'width:100%; max-width: 100em;',
+				'class' => 'crm-select2',
+				'placeholder' => ts('- select -'),
+		);
+		
+		$form->add('select', 'group_of_contact',
+				ts('Contact is in the group(s)'),
+				$group_ids,
+				FALSE,
+				$select2style
+				);
+		
+		$form->add('select', 'membership_type_of_contact',
+				ts('Contact has the membership of type(s)'),
+				$mem_ids,
+				FALSE,
+				$select2style);
+		 
+		$form->add('select', 'membership_org_of_contact',
+				ts('Contact has Membership In'),
+				$org_ids,
+				FALSE,
+				$select2style);
+		 
+		/*
 		$form->add('select', 'group_of_contact', ts('Contact is in the group'), $group_ids, FALSE,
 				array('id' => 'group_of_contact', 'multiple' => 'multiple', 'title' => ts('-- select --'))
 				);
 	
 	
-		$mem_ids = $searchTools->getMembershipsforSelectList();
+	
 	
 		 
 	
@@ -95,12 +171,12 @@ class CRM_Familyfriendly_Form_Search_HouseholdCouplesSearch extends CRM_Contact_
 				array('id' => 'membership_type_of_contact', 'multiple' => 'multiple', 'title' => ts('-- select --'))
 				);
 	
-		$org_ids = $searchTools->getMembershipOrgsforSelectList();
+		
 		$form->add('select', 'membership_org_of_contact', ts('Contact has Membership In'), $org_ids, FALSE,
 				array('id' => 'membership_org_of_contact', 'multiple' => 'multiple', 'title' => ts('-- select --'))
 				);
 	
-	
+	*/
 		$primary_mem_options = array();
 		$primary_mem_options['primary_only']  = "The Primary Member";
 		$primary_mem_options['any_member'] = "Any Member (related or primary)";
@@ -425,10 +501,7 @@ SELECT ".$outer_select." FROM ( SELECT $select
 	
 		$group_of_contact = $this->_formValues['group_of_contact'];
 	
-		require_once('utils/CustomSearchTools.php');
-		$searchTools = new CustomSearchTools();
-		$tmp_sql_list = $searchTools->getSQLStringFromArray($group_of_contact);
-	
+		$tmp_sql_list = implode(",", $group_of_contact );
 	
 	
 		//print "<br> sql list: ".$tmp_sql_list;
@@ -452,7 +525,9 @@ SELECT ".$outer_select." FROM ( SELECT $select
 		$membership_types_of_con = $this->_formValues['membership_type_of_contact'];
 	
 	
-		$tmp_membership_sql_list = $searchTools->convertArrayToSqlString( $membership_types_of_con ) ;
+		
+		$tmp_membership_sql_list = implode(",", $membership_types_of_con );
+		
 		if(strlen($tmp_membership_sql_list) > 0 ){
 			$clauses[] = "memberships_a.membership_type_id IN (".$tmp_membership_sql_list.") ";
 			$clauses[] = " mem_status.is_current_member = '1' ";
@@ -465,13 +540,15 @@ SELECT ".$outer_select." FROM ( SELECT $select
 	
 		}
 	
-	
-		// 'membership_org_of_contact'
+
 	
 		$membership_org_of_con = $this->_formValues['membership_org_of_contact'];
-		$tmp_membership_org_sql_list = $searchTools->convertArrayToSqlString( $membership_org_of_con ) ;
+		
+		
+		$tmp_membership_org_sql_list = implode( ",", $membership_org_of_con );
+		
 		if(strlen($tmp_membership_org_sql_list) > 0 ){
-			// print "<br>membership orgs: <br>".$tmp_membership_org_sql_list;
+			
 				
 			$clauses[] = "mt.member_of_contact_id IN (".$tmp_membership_org_sql_list.")" ;
 			$clauses[] = "mt.is_active = '1'" ;
@@ -480,7 +557,7 @@ SELECT ".$outer_select." FROM ( SELECT $select
 			}
 			$clauses[] = "mem_status.is_current_member = '1'";
 			$clauses[] = "mem_status.is_active = '1'";
-			//print_r($clauses);
+			
 	
 		}
 	
@@ -516,6 +593,8 @@ SELECT ".$outer_select." FROM ( SELECT $select
 	
 	
 	}
+	
+	
 	
 	function alterRow( &$row ) {
 		 
