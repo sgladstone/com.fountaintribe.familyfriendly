@@ -8,6 +8,10 @@ class CRM_Familyfriendly_Form_Search_HouseholdCouplesSearch extends CRM_Contact_
 	protected $_formValues;
 	protected $_tableName = null;
 	
+	protected $_aclFrom = NULL;
+	protected $_aclWhere = NULL;
+	
+	
 	function __construct( &$formValues ) {
 		$this->_formValues = $formValues;
 	
@@ -76,11 +80,11 @@ class CRM_Familyfriendly_Form_Search_HouseholdCouplesSearch extends CRM_Contact_
 		 */
 	
 	
-	
-		//require_once('utils/CustomSearchTools.php');
-		//$searchTools = new CustomSearchTools();
-		//$group_ids = $searchTools->getRegularGroupsforSelectList();
 		
+		
+		$group_ids =  CRM_Core_PseudoConstant::nestedGroup();
+		
+		/*
 		$group_ids = array();
 		
 		$group_result = civicrm_api3('Group', 'get', array(
@@ -100,14 +104,26 @@ class CRM_Familyfriendly_Form_Search_HouseholdCouplesSearch extends CRM_Contact_
 		
 			}
 		}
+		*/
 		
-		
+		$cur_domain_id = "-1";
+			
+		$result = civicrm_api3('Domain', 'get', array(
+				'sequential' => 1,
+				'current_domain' => "",
+		));
+			
+		if( $result['is_error'] == 0 ){
+			$cur_domain_id = $result['id'];
+				
+		}
 		// get membership ids and org contact ids.
 		$mem_ids = array();
 		$org_ids = array();
 		$api_result = civicrm_api3('MembershipType', 'get', array(
 				'sequential' => 1,
 				'is_active' => 1,
+				'domain_id' =>  $cur_domain_id ,
 				'options' => array('sort' => "name"),
 		));
 		
@@ -158,23 +174,7 @@ class CRM_Familyfriendly_Form_Search_HouseholdCouplesSearch extends CRM_Contact_
 				$select2style);
 		 
 		/*
-		$form->add('select', 'group_of_contact', ts('Contact is in the group'), $group_ids, FALSE,
-				array('id' => 'group_of_contact', 'multiple' => 'multiple', 'title' => ts('-- select --'))
-				);
-	
-	
-	
-	
-		 
-	
-		$form->add('select', 'membership_type_of_contact', ts('Contact has the membership of type'), $mem_ids, FALSE,
-				array('id' => 'membership_type_of_contact', 'multiple' => 'multiple', 'title' => ts('-- select --'))
-				);
-	
 		
-		$form->add('select', 'membership_org_of_contact', ts('Contact has Membership In'), $org_ids, FALSE,
-				array('id' => 'membership_org_of_contact', 'multiple' => 'multiple', 'title' => ts('-- select --'))
-				);
 	
 	*/
 		$primary_mem_options = array();
@@ -386,6 +386,8 @@ SELECT ".$outer_select." FROM ( SELECT $select
 	}
 	
 	function from(){
+		
+		$this->buildACLClause('contact_a');
 		$tmp_from = "";
 		 
 		$tmp_group_join = "";
@@ -393,9 +395,6 @@ SELECT ".$outer_select." FROM ( SELECT $select
 		$group_of_contact = $this->_formValues['group_of_contact'];
 		 
 		if(count( $group_of_contact ) > 0 ){
-			require_once('utils/CustomSearchTools.php');
-			$searchTools = new CustomSearchTools();
-			$searchTools::verifyGroupCacheTable($group_of_contact ) ;
 	
 			$tmp_group_join = "LEFT JOIN civicrm_group_contact as groups_a on contact_a.id = groups_a.contact_id ".
 					" LEFT JOIN civicrm_group_contact_cache as groupcache_a ON contact_a.id = groupcache_a.contact_id ";
@@ -485,7 +484,7 @@ SELECT ".$outer_select." FROM ( SELECT $select
 		WHERE  spouse_rel.relationship_type_id IN ( 2 ) AND spouse_rel.is_active = 1
 		AND spouseA.is_deceased <> 1
 		AND spouseB.is_deceased <> 1
-		) as sp ON ( contact_a.id = sp.contact_id_a || contact_a.id = sp.contact_id_b)
+		) as sp ON ( contact_a.id = sp.contact_id_a || contact_a.id = sp.contact_id_b) {$this->_aclFrom}
 	 ".$tmp_group_join.$tmp_mem_join;
 	
 	
@@ -586,6 +585,12 @@ SELECT ".$outer_select." FROM ( SELECT $select
 				$clauses[] = "contact_a.id IN ( $contactIDs )";
 			}
 		}
+		
+		
+		// needed to enforce CiviCRM ACLs.
+		if ($this->_aclWhere) {
+			$clauses[] =  " {$this->_aclWhere} ";
+		}
 	
 		$partial_where_clause = implode( ' AND ', $clauses );
 	
@@ -593,6 +598,7 @@ SELECT ".$outer_select." FROM ( SELECT $select
 	
 	
 	}
+	
 	
 	
 	
@@ -640,6 +646,13 @@ SELECT ".$outer_select." FROM ( SELECT $select
 	
 	function summary( ) {
 		return null;
+	}
+	
+	/**
+	 * @param string $tableAlias
+	 */
+	public function buildACLClause($tableAlias = 'contact') {
+		list($this->_aclFrom, $this->_aclWhere) = CRM_Contact_BAO_Contact_Permission::cacheClause($tableAlias);
 	}
 	
 }

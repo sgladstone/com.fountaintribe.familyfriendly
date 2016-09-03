@@ -7,6 +7,9 @@ extends CRM_Contact_Form_Search_Custom_Base implements CRM_Contact_Form_Search_I
 
 	protected $_formValues;
 	protected $_tableName = null;
+	
+	protected $_aclFrom = NULL;
+	protected $_aclWhere = NULL;
 
 	function __construct( &$formValues ) {
 		$this->_formValues = $formValues;
@@ -50,7 +53,7 @@ extends CRM_Contact_Form_Search_Custom_Base implements CRM_Contact_Form_Search_I
 		 */
 
 		
-	 $group_ids =   CRM_Core_PseudoConstant::group();
+	 $group_ids =   CRM_Core_PseudoConstant::nestedGroup();   
 
 
 	 /*
@@ -60,8 +63,26 @@ extends CRM_Contact_Form_Search_Custom_Base implements CRM_Contact_Form_Search_I
 
 	  $tmp_select->setMultiple(true);
 	  */
+	 
+	 /*
 	 $form->add('select', 'group_of_contact', ts('Child in Groups'), $group_ids, TRUE,
 	 		array('id' => 'group_of_contact', 'multiple' => 'multiple', 'title' => ts('-- select --'))
+	 		);
+	 		
+	 		*/
+	 
+	 $select2style = array(
+	 		'multiple' => TRUE,
+	 		'style' => 'width:100%; max-width: 100em;',
+	 		'class' => 'crm-select2',
+	 		'placeholder' => ts('- select -'),
+	 );
+	 
+	 $form->add('select', 'group_of_contact',
+	 		ts('Child in Groups(s)'),
+	 		$group_ids,
+	 		TRUE,
+	 		$select2style
 	 		);
 
 
@@ -172,14 +193,19 @@ extends CRM_Contact_Form_Search_Custom_Base implements CRM_Contact_Form_Search_I
 	}
 
 	function from(){
+		
+		$this->buildACLClause('contact_b');
+		
 		$group_id_of_child = $this->_formValues['group_of_contact'] ;
 
 
-
-		require_once('utils/CustomSearchTools.php');
-		$searchTools = new CustomSearchTools();
-		$tmp_sql_list = $searchTools->getSQLStringFromArray($group_id_of_child);
-
+		if( count( $group_id_of_child) > 0   ){
+			$tmp_sql_list = implode(",", $group_id_of_child);
+			$grp_from_sql = "left join civicrm_group_contact as groups on contact_b.id = groups.contact_id AND (groups.group_id in ( $tmp_sql_list ) AND groups.status = 'Added')
+		LEFT JOIN civicrm_group as group_master ON groups.group_id = group_master.id
+		LEFT JOIN civicrm_group_contact_cache as groupcache ON contact_b.id = groupcache.contact_id AND groupcache.group_id IN (".$tmp_sql_list.")
+	LEFT JOIN civicrm_group as smartgroup_master ON groupcache.group_id = smartgroup_master.id";
+		}	
 
 		return " civicrm_contact AS contact_b
 		JOIN civicrm_relationship as rel ON rel.contact_id_a = contact_b.id
@@ -190,13 +216,8 @@ extends CRM_Contact_Form_Search_Custom_Base implements CRM_Contact_Form_Search_I
 		left JOIN civicrm_phone mobile_phone ON contact_a.id = mobile_phone.contact_id AND mobile_phone.phone_type_id = 2
 		left join civicrm_address on contact_a.id = civicrm_address.contact_id
 		left join civicrm_state_province on civicrm_address.state_province_id = civicrm_state_province.id
-		LEFT JOIN civicrm_country country ON civicrm_address.country_id = country.id
-		left join civicrm_group_contact as groups on contact_b.id = groups.contact_id AND (groups.group_id in ( $tmp_sql_list ) AND groups.status = 'Added')
-		LEFT JOIN civicrm_group as group_master ON groups.group_id = group_master.id
-		LEFT JOIN civicrm_group_contact_cache as groupcache ON contact_b.id = groupcache.contact_id AND groupcache.group_id IN (".$tmp_sql_list.")
-	LEFT JOIN civicrm_group as smartgroup_master ON groupcache.group_id = smartgroup_master.id
-	LEFT JOIN civicrm_relationship_type as reltype ON reltype.ID = rel.relationship_type_id
-	";
+		LEFT JOIN civicrm_country country ON civicrm_address.country_id = country.id ".$grp_from_sql.	
+	" LEFT JOIN civicrm_relationship_type as reltype ON reltype.ID = rel.relationship_type_id {$this->_aclFrom} ";
 	}
 
 	function where($includeContactIDs = false){
@@ -208,9 +229,7 @@ extends CRM_Contact_Form_Search_Custom_Base implements CRM_Contact_Form_Search_I
 
 
 
-		require_once('utils/CustomSearchTools.php');
-		$searchTools = new CustomSearchTools();
-		$tmp_sql_list = $searchTools->getSQLStringFromArray($group_id_of_child);
+		$tmp_sql_list = implode(",", $group_id_of_child);
 
 		$clauses[] = "contact_b.contact_type = 'Individual'";
 		$clauses[] = "contact_b.is_deceased <> 1";
@@ -244,6 +263,11 @@ extends CRM_Contact_Form_Search_Custom_Base implements CRM_Contact_Form_Search_I
 			}
 		}
 
+	// needed to enforce CiviCRM ACLs.
+	if ($this->_aclWhere) {
+		$clauses[] =  " {$this->_aclWhere} ";
+	}
+		
 	 $partial_where_clause = implode( ' AND ', $clauses );
 
 
@@ -285,4 +309,10 @@ extends CRM_Contact_Form_Search_Custom_Base implements CRM_Contact_Form_Search_I
 		return null;
 	}
 	
+	/**
+	 * @param string $tableAlias
+	 */
+	public function buildACLClause($tableAlias = 'contact') {
+		list($this->_aclFrom, $this->_aclWhere) = CRM_Contact_BAO_Contact_Permission::cacheClause($tableAlias);
+	}
 }
