@@ -156,8 +156,6 @@ extends CRM_Contact_Form_Search_Custom_Base implements CRM_Contact_Form_Search_I
 				// make sure selected smart groups are cached in the cache table
 				$group_of_contact = $this->_formValues['group_of_contact'];
 
-				// TODO: Verify smart groups are good
-
 				$from  = $this->from( );
 				$where = $this->where( $includeContactIDs ) ;
 
