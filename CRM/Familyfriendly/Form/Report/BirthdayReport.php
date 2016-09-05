@@ -1,43 +1,40 @@
 <?php
 
-class CRM_Familyfriendly_Form_Report_AnniversaryReport extends CRM_Report_Form {
+class CRM_Familyfriendly_Form_Report_BirthdayReport extends CRM_Report_Form {
+
+
 	protected $_summary = NULL;
 	protected $_emailField_a = FALSE;
 	protected $_emailField_b = FALSE;
-	protected $_customGroupExtends = array();
+	protected $_customGroupExtends = array(
+			'Contact', 'Individual');
 	public $_drilldownReport = array('contact/detail' => 'Link to Detail Report');
 
 	function __construct() {
 
 		$contact_type = CRM_Contact_BAO_ContactType::getSelectElements(FALSE, TRUE, '_');
 
-		$together_choices_array =  array( 0 => 'Less than 1 year');
-		$max_together_filter = 100;
-		for ($i = 1; $i <= $max_together_filter; $i++){
-			$special_label = "";
-			if( $i == 25){
-				$special_label = " - Silver ";
-			}else if($i == 50){
-				$special_label = " - Golden ";
-			}
-			$together_choices_array[$i] = $i.$special_label;
+		$age_choices_array =  array( 0 => 'Infant');
+		$max_age_filter = 150;
+		for ($i = 1; $i <= $max_age_filter; $i++){
+			$age_choices_array[$i] = $i;
 
 		}
 
-		$together_choices_next_array = array();
-		for ($i = 1; $i <= $max_together_filter; $i++){
-			$special_label = "";
-			if( $i == 25){
-				$special_label = " - Silver ";
-			}else if($i == 50) {
-				$special_label = " - Golden ";
-			}
-			$together_choices_next_array[$i] = $i.$special_label;
-
-		}
-
-
+		// TODO: If HebrewCalendar extension is enabled, then get Hebrew birthday. 
 		
+		if( 1 == 0  ){
+			$disable_jewish_features = FALSE;
+		 	$tmp_all_result_columns['Hebrew Birth Date'] =  'birth_date_hebrew';
+		 	$tmp_all_result_columns['Hebrew Birth Date Transliterated'] = 'birth_date_hebrew_trans';
+		}else{
+
+	 		 $disable_jewish_features = TRUE;
+	   
+		}
+		
+
+		//
 		$cur_domain_id = "-1";
 			
 		$result = civicrm_api3('Domain', 'get', array(
@@ -49,6 +46,7 @@ class CRM_Familyfriendly_Form_Report_AnniversaryReport extends CRM_Report_Form {
 			$cur_domain_id = $result['id'];
 		
 		}
+		
 		// get membership ids and org contact ids.
 		$mem_ids = array();
 		$org_ids = array();
@@ -77,11 +75,10 @@ class CRM_Familyfriendly_Form_Report_AnniversaryReport extends CRM_Report_Form {
 					
 			}
 		
-		}
-	
-		//$mem_org_ids = array();
-		//$mem_types_ids = array();
+		}	
 
+	 $gender_options =  CRM_Contact_BAO_Contact::buildOptions('gender_id');
+	  
 	 $this->_columns = array(
 	 		'civicrm_contact' =>
 	 		array(
@@ -98,156 +95,87 @@ class CRM_Familyfriendly_Form_Report_AnniversaryReport extends CRM_Report_Form {
 	 								'no_display' => TRUE,
 	 								'required' => TRUE,
 	 						),
+	 						'contact_birthdate_formatted' =>
+	 						array(
+	 								'title' => ts('Birthday (formatted)'),
+	 								'dbAlias' => " CONCAT( monthname(birth_date) , ' ',  day(birth_date))",
+	 								'default' => TRUE,
+	 						),
+	 						'occasion_date' =>
+	 						array(
+	 								'title' => ts('Birthday (sortable)'),
+	 								'dbAlias' => " date_format(birth_date, '%m-%d' ) " ,
+	 						),
+	 						'contact_birthyear' =>
+	 						array(
+	 								'title' => ts('Birth Year'),
+	 								'dbAlias' => " year(birth_date) ",
+	 								'default' => TRUE,
+	 						),
+	 						'birth_date_hebrew' =>
+	 						array(
+	 								'title' => ts('Hebrew Birth Date'),
+	 								'dbAlias' => " '' ",
+	 								'no_display' => $disable_jewish_features ,
+	 						),
+	 						'birth_date_hebrew_trans' =>
+	 						array(
+	 								'title' => ts('Hebrew Birth Date - Transliterated'),
+	 								'dbAlias' => " '' ",
+	 								'no_display' => $disable_jewish_features ,
+	 						),
 
+	 						'contact_age' =>
+	 						array(
+	 								'title' => ts('Age (today)'),
+	 								'dbAlias' => " TIMESTAMPDIFF(YEAR, birth_date, CURDATE()) ",
+
+	 						),
+	 						'contact_next_age' =>
+	 						array(
+	 								'title' => ts('Age on Next Birthday'),
+	 								'dbAlias' => " TIMESTAMPDIFF(YEAR, birth_date, CURDATE()) + 1 ",
+	 								'default' => TRUE,
+	 						),
+	 						 
+	 						'gender_id' =>
+	 						array('title' => ts('Gender'),
+	 						),
+	 						'contact_occasion_type' =>
+	 						array(
+	 								'title' => ts('Occasion Type'),
+	 								'dbAlias' => " 'Birthday' ",
+	 								'default' => TRUE,
+	 						),
 	 				),
 	 				'filters' =>
 	 				array(
 	 						'sort_name_a' =>
-	 						array('title' => ts('Contact A'),
+	 						array('title' => ts('Contact'),
 	 								'name' => 'sort_name',
 	 								'operator' => 'like',
 	 								'type' => CRM_Report_Form::OP_STRING,
 	 						),
-	 				),
-	 				'grouping' => 'conact_a_fields',
-	 		),
-	 		'civicrm_contact_b' =>
-	 		array(
-	 				'dao' => 'CRM_Contact_DAO_Contact',
-	 				'alias' => 'contact_b',
-	 				'fields' =>
-	 				array(
-	 						'sort_name_b' =>
-	 						array('title' => ts('Spouse Name'),
-	 								'name' => 'sort_name',
-	 								'required' => TRUE,
-	 						),
-	 						'id' =>
-	 						array(
-	 								'no_display' => TRUE,
-	 								'required' => TRUE,
-	 						),
-	 						'joint_greeting' =>
-	 						array('title' => ts('Joint Greeting'),
-	 								'dbAlias' =>  " '' ",
-	 						),
-
-	 				),
-	 				'filters' =>
-	 				array(
-	 						'sort_name_b' =>
-	 						array('title' => ts('Contact B'),
-	 								'name' => 'sort_name',
-	 								'operator' => 'like',
-	 								'type' => CRM_Report_Form::OP_STRING,
-	 						),
-	 				),
-	 				'grouping' => 'conact_b_fields',
-	 		),
-	 		'civicrm_email' =>
-	 		array(
-	 				'dao' => 'CRM_Core_DAO_Email',
-	 				'fields' =>
-	 				array(
-	 						'email_a' =>
-	 						array('title' => ts('Email of Contact A'),
-	 								'name' => 'email',
-	 						),
-	 				),
-	 				'grouping' => 'conact_a_fields',
-	 		),
-	 		'civicrm_email_b' =>
-	 		array(
-	 				'dao' => 'CRM_Core_DAO_Email',
-	 				'alias' => 'email_b',
-	 				'fields' =>
-	 				array(
-	 						'email_b' =>
-	 						array('title' => ts('Email of Contact B'),
-	 								'name' => 'email',
-	 						),
-	 				),
-	 				'grouping' => 'conact_b_fields',
-	 		),
-	 		'civicrm_relationship_type' =>
-	 		array(
-	 				'dao' => 'CRM_Contact_DAO_RelationshipType',
-	 				'fields' =>
-	 				array(
-	 						'label_a_b' =>
-	 						array('title' => ts('Relationship A-B '),
-	 								'default' => FALSE,
-	 						),
-	 						'label_b_a' =>
-	 						array('title' => ts('Relationship B-A '),
-	 								'default' => FALSE,
-	 						),
-	 				),
-	 				'filters' =>
-	 				array(
-
-	 				),
-	 				'grouping' => 'relation-fields',
-	 		),
-	 		'civicrm_relationship' =>
-	 		array(
-	 				'dao' => 'CRM_Contact_DAO_Relationship',
-	 				'fields' =>
-	 				array(
-	 						'anniversary_date_formatted' =>
-	 						array('title' => ts('Anniversary Date (formatted)'),
-	 								'dbAlias' =>  " CONCAT( monthname(start_date) , ' ',  day(start_date)) ",
-	 								'default' => TRUE,
-	 						),
-	 						'occasion_date' =>
-	 						array('title' => ts('Anniversary Date (sortable)'),
-	 								'dbAlias' =>  "date_format(start_date, '%m-%d' ) ",
-	 						),
-	 						'anniversary_year' =>
-	 						array('title' => ts('Year of Wedding'),
-	 								'dbAlias' =>  " YEAR(start_date) ",
-	 								'default' => TRUE,
-	 						),
-	 						'years_married_now' =>
-	 						array('title' => ts('Num. Years Married (as of today)'),
-	 								'dbAlias' =>  " TIMESTAMPDIFF(YEAR, start_date, CURDATE()) ",
-	 						),
-	 						'years_married_next' =>
-	 						array('title' => ts('Num. Years Married (on next anniversary)'),
-	 								'dbAlias' =>  " TIMESTAMPDIFF(YEAR, start_date, CURDATE()) + 1  ",
-	 								'default' => TRUE,
-	 						),
-	 						'occasion_type' =>
-	 						array('title' => ts('Occasion Type'),
-	 								'dbAlias' =>  " 'Anniversary' ",
-	 								'default' => TRUE,
-	 						),
-	 						'description' =>
-	 						array('title' => ts('Relationship Description'),
-	 						),
-	 				),
-	 				'filters' =>
-	 				array(
 	 						'occasion_date' =>
 	 						array(
-	 								'dbAlias' => " concat( YEAR( CURDATE()),   date_format(start_date, '%m%d' ) ) ",
+	 								'dbAlias' => " concat( YEAR( CURDATE()),   date_format(birth_date, '%m%d' ) ) ",
 	 								'title' => ts('Date Range'),
 	 								'operatorType' => CRM_Report_Form::OP_DATE,
 	 								'type' => CRM_Utils_Type::T_DATE
 	 						),
-	 						'years_married_now' =>
-	 						array('title' => ts('Num. of Years Married (as of today)'),
-	 								'dbAlias' => " TIMESTAMPDIFF(YEAR, start_date, CURDATE()) ",
+	 						'contact_age' =>
+	 						array('title' => ts('Age'),
+	 								'dbAlias' => " TIMESTAMPDIFF(YEAR, birth_date, CURDATE()) ",
 	 								'operatorType' => CRM_Report_Form::OP_MULTISELECT,
 	 								'type' => CRM_Utils_Type::T_INT,
-	 								'options' =>  $together_choices_array,
+	 								'options' => $age_choices_array,
 	 						),
-	 						'years_married_next' =>
-	 						array('title' => ts('Num. of Years Married (on next anniversary)'),
-	 								'dbAlias' => " TIMESTAMPDIFF(YEAR, start_date, CURDATE()) + 1  ",
+	 						'gender_id' =>
+	 						array(
+	 								'name' => 'gender_id',
+	 								'title' => ts('Gender'),
 	 								'operatorType' => CRM_Report_Form::OP_MULTISELECT,
-	 								'type' => CRM_Utils_Type::T_INT, 
-	 								'options' => $together_choices_next_array,
+	 								'options' => $gender_options,
 	 						),
 	 						'membership_org' =>
 	 						array( 'title' => ts('Membership Organization'),
@@ -267,36 +195,44 @@ class CRM_Familyfriendly_Form_Report_AnniversaryReport extends CRM_Report_Form {
 	 								'options' => $mem_ids,
 	 						),
 
+
+
 	 				),
 	 				'order_bys' =>
 	 				array(
 	 						'sort_name' =>
 	 						array('title' => ts('Last Name, First Name'),
 	 						),
-
-	 						'occasion_date' =>
+	 						'gender_id' =>
 	 						array(
-	 								'dbAlias' => " date_format(start_date, '%m%d' )",
-	 								'title' => ts('Anniversary Date'),
+	 								'name' => 'gender_id',
+	 								'title' => ts('Gender'),
 	 						),
-	 						'occasion_month' =>
+	 						'birth_date' =>
 	 						array(
-	 								'dbAlias' => " date_format(start_date, '%m' )",
-	 								'title' => ts('Anniversary Month'),
+	 								'dbAlias' => " date_format(birth_date, '%m%d' )",
+	 								'title' => ts('Birth Date (mm-dd)'),
 	 						),
-	 						'years_married' =>
+	 						'birth_month' =>
 	 						array(
-	 								'dbAlias' => "  TIMESTAMPDIFF(YEAR, start_date, CURDATE()) ",
-	 								'title' => ts('Num. of Years Married'),
+	 								'dbAlias' => " date_format(birth_date, '%m' )",
+	 								'title' => ts('Birth Month'),
+	 						),
+	 						'contact_age' =>
+	 						array(
+	 								'dbAlias' => "  TIMESTAMPDIFF(YEAR, birth_date, CURDATE()) ",
+	 								'title' => ts('Age'),
 	 						),
 	 				),
-	 				'grouping' => 'relation-fields',
+	 				'grouping' => 'conact_a_fields',
 	 		),
+	 		 
 	 		'civicrm_address' =>
 	 		array(
 	 				'dao' => 'CRM_Core_DAO_Address',
 	 				'filters' =>
 	 				array(
+
 
 	 				),
 	 				'grouping' => 'contact-fields',
@@ -356,15 +292,10 @@ class CRM_Familyfriendly_Form_Report_AnniversaryReport extends CRM_Report_Form {
 
 	function from() {
 		$this->_from = "
-		FROM civicrm_relationship {$this->_aliases['civicrm_relationship']}
+		FROM civicrm_contact {$this->_aliases['civicrm_contact']}
 
-		INNER JOIN civicrm_contact {$this->_aliases['civicrm_contact']}
-		ON ( {$this->_aliases['civicrm_relationship']}.contact_id_a =
-		{$this->_aliases['civicrm_contact']}.id )
 
-		INNER JOIN civicrm_contact {$this->_aliases['civicrm_contact_b']}
-		ON ( {$this->_aliases['civicrm_relationship']}.contact_id_b =
-		{$this->_aliases['civicrm_contact_b']}.id )
+		 
 
 		{$this->_aclFrom} ";
 
@@ -380,10 +311,7 @@ class CRM_Familyfriendly_Form_Report_AnniversaryReport extends CRM_Report_Form {
 					{$this->_aliases['civicrm_address']}.is_primary = 1 ) ";
 				}
 
-				$this->_from .= "
-				INNER JOIN civicrm_relationship_type {$this->_aliases['civicrm_relationship_type']}
-				ON ( {$this->_aliases['civicrm_relationship']}.relationship_type_id  =
-				{$this->_aliases['civicrm_relationship_type']}.id  ) ";
+
 
 				// include Email Field
 				if ($this->_emailField_a) {
@@ -404,6 +332,7 @@ class CRM_Familyfriendly_Form_Report_AnniversaryReport extends CRM_Report_Form {
 
 	function where() {
 		$whereClauses = $havingClauses = array();
+
 		foreach ($this->_columns as $tableName => $table) {
 			if (array_key_exists('filters', $table)) {
 				foreach ($table['filters'] as $fieldName => $field) {
@@ -413,7 +342,6 @@ class CRM_Familyfriendly_Form_Report_AnniversaryReport extends CRM_Report_Form {
 						$relative = CRM_Utils_Array::value("{$fieldName}_relative", $this->_params);
 						$from     = CRM_Utils_Array::value("{$fieldName}_from", $this->_params);
 						$to       = CRM_Utils_Array::value("{$fieldName}_to", $this->_params);
-
 
 						$clause = $this->dateClause($field['dbAlias'], $relative, $from, $to, $field['type']);
 					}
@@ -494,17 +422,17 @@ class CRM_Familyfriendly_Form_Report_AnniversaryReport extends CRM_Report_Form {
 		}
 
 
-		// Make sure no one is deleted or dececased.
-		$whereClauses[] = " {$this->_aliases['civicrm_contact']}.is_deleted <> 1 ";
-		$whereClauses[] = " {$this->_aliases['civicrm_contact_b']}.is_deleted <> 1 ";
-		$whereClauses[] = " {$this->_aliases['civicrm_contact']}.is_deceased <> 1 ";
-		$whereClauses[] = " {$this->_aliases['civicrm_contact_b']}.is_deceased <> 1 ";
+		$whereClauses[] = " is_deceased <> 1 ";
+		$whereClauses[] = " is_deleted <> 1 ";
+		$whereClauses[] = " contact_type = 'Individual' ";
+		$whereClauses[] = " birth_date IS NOT NULL ";
+		 
+		// require_once('utils/CustomSearchTools.php');
+		// $searchTools = new CustomSearchTools();
 
-		// Make sure the relationship is active and has a start date.
-		$whereClauses[] = " {$this->_aliases['civicrm_relationship']}.is_active = 1 ";
-		$whereClauses[] = " {$this->_aliases['civicrm_relationship']}.start_date IS NOT NULL ";
+		// $contact_field_name = "t1.underlying_contact_id";
 
-		$whereClauses[] = " lower( {$this->_aliases['civicrm_relationship_type']}.name_a_b ) like '%spouse%' ";
+		// $searchTools->updateWhereClauseForMemberships( $membership_types_of_contact,  $membership_orgs_of_contact, $contact_field_name,  $clauses   ) ;
 
 		if (empty($whereClauses)) {
 			$this->_where = 'WHERE ( 1 ) ';
@@ -514,10 +442,13 @@ class CRM_Familyfriendly_Form_Report_AnniversaryReport extends CRM_Report_Form {
 			$this->_where = 'WHERE ' . implode(' AND ', $whereClauses);
 		}
 
+
+
 		if ($this->_aclWhere) {
-			$this->_where .= " AND {$this->_aclWhere} ";
+			//   $this->_where .= " AND {$this->_aclWhere} ";
 		}
-		// print "<br><br>debug sql: ". $this->_where;
+
+		//  print "<br>debug: ".$this->_where;
 
 		if (!empty($havingClauses)) {
 			// use this clause to construct group by clause.
@@ -530,56 +461,28 @@ class CRM_Familyfriendly_Form_Report_AnniversaryReport extends CRM_Report_Form {
 
 		$isStatusFilter = FALSE;
 		$relStatus = NULL;
-		if (CRM_Utils_Array::value('is_active_value', $this->_params) == '1') {
-			$relStatus = 'Is equal to Active';
-		}
-		elseif (CRM_Utils_Array::value('is_active_value', $this->_params) == '0') {
-			$relStatus = 'Is equal to Inactive';
-		}
+
 		if (CRM_Utils_Array::value('filters', $statistics)) {
 			foreach ($statistics['filters'] as $id => $value) {
 				//for displaying relationship type filter
-				if ($value['title'] == 'Relationship') {
-					$relTypes = CRM_Core_PseudoConstant::relationshipType();
-					$statistics['filters'][$id]['value'] = 'Is equal to ' . $relTypes[$this->_params['relationship_type_id_value']]['label_' . $this->relationType];
-				}
 
-				//for displaying relationship status
-				if ($value['title'] == 'Relationship Status') {
-					$isStatusFilter = TRUE;
-					$statistics['filters'][$id]['value'] = $relStatus;
-				}
 			}
 		}
-		//for displaying relationship status
-		if (!$isStatusFilter && $relStatus) {
-			$statistics['filters'][] = array(
-					'title' => 'Relationship Status',
-					'value' => $relStatus,
-			);
-		}
+
 		return $statistics;
 	}
 
 	function groupBy() {
 		$this->_groupBy = " ";
 		$groupBy = array();
-		if ($this->relationType == 'a_b') {
-			$groupBy[] = " {$this->_aliases['civicrm_contact']}.id";
-		}
-		elseif ($this->relationType == 'b_a') {
-			$groupBy[] = " {$this->_aliases['civicrm_contact_b']}.id";
-		}
 
-		if (!empty($groupBy)) {
-			$this->_groupBy = " GROUP BY  " . implode(', ', $groupBy) . " ,  {$this->_aliases['civicrm_relationship']}.id ";
-		}
-		else {
-			$this->_groupBy = " GROUP BY {$this->_aliases['civicrm_relationship']}.id ";
-		}
+
+
 	}
 
-
+	function BAK_orderBy() {
+		$this->_orderBy = " ORDER BY {$this->_aliases['civicrm_contact']}.sort_name ";
+	}
 
 	function postProcess() {
 		$this->beginPostProcess();
@@ -593,7 +496,8 @@ class CRM_Familyfriendly_Form_Report_AnniversaryReport extends CRM_Report_Form {
 			$this->_params['relationship_type_id_value'] = intval($relType[0]);
 		}
 
-		$this->buildACLClause(array($this->_aliases['civicrm_contact'], $this->_aliases['civicrm_contact_b']));
+		//$this->buildACLClause(array($this->_aliases['civicrm_contact'], $this->_aliases['civicrm_contact_b']));
+		$this->buildACLClause(array($this->_aliases['civicrm_contact']));
 		$sql = $this->buildQuery();
 		$this->buildRows($sql, $rows);
 
@@ -611,7 +515,44 @@ class CRM_Familyfriendly_Form_Report_AnniversaryReport extends CRM_Report_Form {
 		// custom code to alter rows
 		$entryFound = FALSE;
 
+		$genders = CRM_Core_PseudoConstant::get('CRM_Contact_DAO_Contact', 'gender_id', array('localize' => TRUE));
+
+		// TODO: Check if Hebrew Calendar extension is enabled. 
+		$tmp_show_jewish_features = false;
+		
 		foreach ($rows as $rowNum => $row) {
+			// print "<br><br>";
+			// print_r( $row);
+			//civicrm_contact_birth_date_hebrew
+			if( $tmp_show_jewish_features ){
+				if( array_key_exists('civicrm_contact_birth_date_hebrew', $row) ||  array_key_exists('civicrm_contact_birth_date_hebrew_trans', $row) ) {
+
+					require_once 'CRM/Hebrew/HebrewDates.php';
+
+					$tmpHebCal = new HebrewCalendar();
+
+					$hebrew_data = $tmpHebCal::retrieve_hebrew_demographic_dates( $row['civicrm_contact_id']);
+					//print "<br>Hebrew data: ";
+					//print_r($hebrew_data );
+					$heb_date_of_birth =  $hebrew_data['hebrew_date_of_birth'];
+					$heb_date_of_birth_hebrew =  $hebrew_data['hebrew_date_of_birth_hebrew'];
+					$bar_bat_mitzvah_label = $hebrew_data['bar_bat_mitzvah_label'] ;
+					$earliest_bar_bat_mitzvah_date = $hebrew_data['earliest_bar_bat_mitzvah_date'];
+
+
+					$rows[$rowNum]['civicrm_contact_birth_date_hebrew_trans'] =  $heb_date_of_birth;
+					$rows[$rowNum]['civicrm_contact_birth_date_hebrew'] = $heb_date_of_birth_hebrew;
+				}
+				$entryFound = TRUE;
+			}
+
+			if (array_key_exists('civicrm_contact_gender_id', $row)) {
+				if ($value = $row['civicrm_contact_gender_id']) {
+					$rows[$rowNum]['civicrm_contact_gender_id'] = $genders[$value];
+				}
+				$entryFound = TRUE;
+			}
+
 
 			// handle country
 			if (array_key_exists('civicrm_address_country_id', $row)) {
@@ -652,21 +593,6 @@ class CRM_Familyfriendly_Form_Report_AnniversaryReport extends CRM_Report_Form {
 								$entryFound = TRUE;
 							}
 
-							 
-							if (array_key_exists('civicrm_contact_b_joint_greeting', $row)) {
-								$params = array(
-										'version' => 3,
-										'sequential' => 1,
-										'contact_id' => $row['civicrm_contact_id'],
-								);
-								$result = civicrm_api('JointGreetings', 'getsingle', $params);
-
-								$rows[$rowNum]['civicrm_contact_b_joint_greeting'] = $result['greetings.joint_casual'];
-
-							}
-
-
-
 							// skip looking further in rows, if first row itself doesn't
 							// have the column we need
 							if (!$entryFound) {
@@ -674,5 +600,4 @@ class CRM_Familyfriendly_Form_Report_AnniversaryReport extends CRM_Report_Form {
 							}
 		}
 	}
-	
 }

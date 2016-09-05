@@ -14,8 +14,8 @@
     <url desc="Support">https://github.com/sgladstone/com.fountaintribe.familyfriendly/issues</url>
     <url desc="Licensing">http://www.gnu.org/licenses/agpl-3.0.html</url>
   </urls>
-  <releaseDate>2016-09-03</releaseDate>
-  <version>1.7</version>
+  <releaseDate>2016-09-05</releaseDate>
+  <version>1.8</version>
   <develStage>stable</develStage>
   <compatibility>
   <ver>4.6</ver>
