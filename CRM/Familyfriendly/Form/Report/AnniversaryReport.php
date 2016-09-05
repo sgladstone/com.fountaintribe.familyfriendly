@@ -631,10 +631,15 @@ class CRM_Familyfriendly_Form_Report_AnniversaryReport extends CRM_Report_Form {
 			if (array_key_exists('civicrm_contact_sort_name_a', $row) &&
 					array_key_exists('civicrm_contact_id', $row)
 					) {
-						$url = CRM_Report_Utils_Report::getNextUrl('contact/detail',
+					
+						/*
+						 $url = CRM_Report_Utils_Report::getNextUrl('contact/detail',
 								'reset=1&force=1&id_op=eq&id_value=' . $row['civicrm_contact_id'],
 								$this->_absoluteUrl, $this->_id, $this->_drilldownReport
 								);
+								*/
+						$url = "/civicrm/contact/view?reset=1&cid=".$row['civicrm_contact_id'];
+						
 						$rows[$rowNum]['civicrm_contact_sort_name_a_link'] = $url;
 						$rows[$rowNum]['civicrm_contact_sort_name_a_hover'] = ts("View Contact details for this contact.");
 						$entryFound = TRUE;
@@ -643,10 +648,15 @@ class CRM_Familyfriendly_Form_Report_AnniversaryReport extends CRM_Report_Form {
 					if (array_key_exists('civicrm_contact_b_sort_name_b', $row) &&
 							array_key_exists('civicrm_contact_b_id', $row)
 							) {
+								
+								/*
 								$url = CRM_Report_Utils_Report::getNextUrl('contact/detail',
 										'reset=1&force=1&id_op=eq&id_value=' . $row['civicrm_contact_b_id'],
 										$this->_absoluteUrl, $this->_id, $this->_drilldownReport
 										);
+										*/
+								
+								$url = "/civicrm/contact/view?reset=1&cid=".$row['civicrm_contact_b_id'];
 								$rows[$rowNum]['civicrm_contact_b_sort_name_b_link'] = $url;
 								$rows[$rowNum]['civicrm_contact_b_sort_name_b_hover'] = ts("View Contact details for this contact.");
 								$entryFound = TRUE;

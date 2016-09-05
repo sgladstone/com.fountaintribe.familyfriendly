@@ -1,14 +1,14 @@
 <?php
 
 class CRM_Familyfriendly_Form_Report_BirthdayReport extends CRM_Report_Form {
-
-
+ 
 	protected $_summary = NULL;
 	protected $_emailField_a = FALSE;
 	protected $_emailField_b = FALSE;
 	protected $_customGroupExtends = array(
 			'Contact', 'Individual');
-	public $_drilldownReport = array('contact/detail' => 'Link to Detail Report');
+	
+	public $_drilldownReport = array('civicrm/contact/view' => 'Link to Detail');
 
 	function __construct() {
 
@@ -20,20 +20,7 @@ class CRM_Familyfriendly_Form_Report_BirthdayReport extends CRM_Report_Form {
 			$age_choices_array[$i] = $i;
 
 		}
-
-		// TODO: If HebrewCalendar extension is enabled, then get Hebrew birthday. 
-		
-		if( 1 == 0  ){
-			$disable_jewish_features = FALSE;
-		 	$tmp_all_result_columns['Hebrew Birth Date'] =  'birth_date_hebrew';
-		 	$tmp_all_result_columns['Hebrew Birth Date Transliterated'] = 'birth_date_hebrew_trans';
-		}else{
-
-	 		 $disable_jewish_features = TRUE;
-	   
-		}
-		
-
+	
 		//
 		$cur_domain_id = "-1";
 			
@@ -112,19 +99,6 @@ class CRM_Familyfriendly_Form_Report_BirthdayReport extends CRM_Report_Form {
 	 								'dbAlias' => " year(birth_date) ",
 	 								'default' => TRUE,
 	 						),
-	 						'birth_date_hebrew' =>
-	 						array(
-	 								'title' => ts('Hebrew Birth Date'),
-	 								'dbAlias' => " '' ",
-	 								'no_display' => $disable_jewish_features ,
-	 						),
-	 						'birth_date_hebrew_trans' =>
-	 						array(
-	 								'title' => ts('Hebrew Birth Date - Transliterated'),
-	 								'dbAlias' => " '' ",
-	 								'no_display' => $disable_jewish_features ,
-	 						),
-
 	 						'contact_age' =>
 	 						array(
 	 								'title' => ts('Age (today)'),
@@ -516,35 +490,9 @@ class CRM_Familyfriendly_Form_Report_BirthdayReport extends CRM_Report_Form {
 		$entryFound = FALSE;
 
 		$genders = CRM_Core_PseudoConstant::get('CRM_Contact_DAO_Contact', 'gender_id', array('localize' => TRUE));
-
-		// TODO: Check if Hebrew Calendar extension is enabled. 
-		$tmp_show_jewish_features = false;
+ 
 		
-		foreach ($rows as $rowNum => $row) {
-			// print "<br><br>";
-			// print_r( $row);
-			//civicrm_contact_birth_date_hebrew
-			if( $tmp_show_jewish_features ){
-				if( array_key_exists('civicrm_contact_birth_date_hebrew', $row) ||  array_key_exists('civicrm_contact_birth_date_hebrew_trans', $row) ) {
-
-					require_once 'CRM/Hebrew/HebrewDates.php';
-
-					$tmpHebCal = new HebrewCalendar();
-
-					$hebrew_data = $tmpHebCal::retrieve_hebrew_demographic_dates( $row['civicrm_contact_id']);
-					//print "<br>Hebrew data: ";
-					//print_r($hebrew_data );
-					$heb_date_of_birth =  $hebrew_data['hebrew_date_of_birth'];
-					$heb_date_of_birth_hebrew =  $hebrew_data['hebrew_date_of_birth_hebrew'];
-					$bar_bat_mitzvah_label = $hebrew_data['bar_bat_mitzvah_label'] ;
-					$earliest_bar_bat_mitzvah_date = $hebrew_data['earliest_bar_bat_mitzvah_date'];
-
-
-					$rows[$rowNum]['civicrm_contact_birth_date_hebrew_trans'] =  $heb_date_of_birth;
-					$rows[$rowNum]['civicrm_contact_birth_date_hebrew'] = $heb_date_of_birth_hebrew;
-				}
-				$entryFound = TRUE;
-			}
+		foreach ($rows as $rowNum => $row) {			
 
 			if (array_key_exists('civicrm_contact_gender_id', $row)) {
 				if ($value = $row['civicrm_contact_gender_id']) {
@@ -569,13 +517,18 @@ class CRM_Familyfriendly_Form_Report_BirthdayReport extends CRM_Report_Form {
 				$entryFound = TRUE;
 			}
 
+			
+			// http://localhost:8071/civicrm/contact/view?reset=1&cid=11
 			if (array_key_exists('civicrm_contact_sort_name_a', $row) &&
 					array_key_exists('civicrm_contact_id', $row)
 					) {
-						$url = CRM_Report_Utils_Report::getNextUrl('contact/detail',
-								'reset=1&force=1&id_op=eq&id_value=' . $row['civicrm_contact_id'],
+						
+						$url = "/civicrm/contact/view?reset=1&cid=".$row['civicrm_contact_id'];
+						/*$url = CRM_Report_Utils_Report::getNextUrl('civicrm/contact/view',
+								'reset=1&force=1&cid=' . $row['civicrm_contact_id'],
 								$this->_absoluteUrl, $this->_id, $this->_drilldownReport
 								);
+								*/
 						$rows[$rowNum]['civicrm_contact_sort_name_a_link'] = $url;
 						$rows[$rowNum]['civicrm_contact_sort_name_a_hover'] = ts("View Contact details for this contact.");
 						$entryFound = TRUE;
