@@ -31,9 +31,8 @@ implements CRM_Contact_Form_Search_Interface
 		);
 			
 			
-		require_once('utils/Entitlement.php');
-		$tmpEntitlement = new Entitlement();
-		if( $tmpEntitlement->showJewishFeatures()){
+		// TODO: Check if Hebrew Calendar extension is enabled.
+		if( 1==0){
 		 $tmp_all_result_columns['Hebrew Birth Date'] =  'birth_date_hebrew';
 		 $tmp_all_result_columns['Hebrew Birth Date Transliterated'] = 'birth_date_hebrew_trans';
 		}
@@ -56,9 +55,6 @@ implements CRM_Contact_Form_Search_Interface
 		/**
 		 * Define the search form fields here
 		 */
-
-		require_once('utils/Entitlement.php');
-		$tmpEntitlement = new Entitlement();
 
 		$month =
 		array( ''   => ' -- select -- ' , '1' => 'January', '2' => 'February', '3' => 'March',
@@ -103,33 +99,51 @@ implements CRM_Contact_Form_Search_Interface
 				ts( 'Age Is No Higher Than <= ' ) );
 
 
-		require_once('utils/CustomSearchTools.php');
-		$searchTools = new CustomSearchTools();
-		//$group_ids = $searchTools::getRegularGroupsforSelectList();
 
-		$group_ids =   CRM_Core_PseudoConstant::group();
+		$group_ids =   CRM_Core_PseudoConstant::nestedGroup();
+		$cur_domain_id = "-1";
+			
+		$result = civicrm_api3('Domain', 'get', array(
+				'sequential' => 1,
+				'current_domain' => "",
+		));
+			
+		if( $result['is_error'] == 0 ){
+			$cur_domain_id = $result['id'];
+		
+		}
+		// get membership ids and org contact ids.
+		$mem_ids = array();
+		$org_ids = array();
+		$api_result = civicrm_api3('MembershipType', 'get', array(
+				'sequential' => 1,
+				'is_active' => 1,
+				'domain_id' =>  $cur_domain_id ,
+				'options' => array('sort' => "name"),
+		));
+		
+		if( $api_result['is_error'] == 0 ){
+			$tmp_api_values = $api_result['values'];
+			foreach($tmp_api_values as $cur){
+		
+				$tmp_id = $cur['id'];
+				$mem_ids[$tmp_id] = $cur['name'];
+					
+				$org_id = $cur['member_of_contact_id'];
+				// get display name of org
+				$result = civicrm_api3('Contact', 'getsingle', array(
+						'sequential' => 1,
+						'id' => $org_id ,
+				));
+				$org_ids[$org_id] = $result['display_name'];
+		
+					
+			}
+		
+		}
+			
 
-		$org_ids = $searchTools->getMembershipOrgsforSelectList();
-
-		$mem_ids = $searchTools->getMembershipsforSelectList();
-		/*
-		 $select2style = array(
-		 'multiple' => TRUE,
-		 'style' => 'width: 100%; max-width: 60em;',
-		 'class' => 'crm-select2',
-		 'placeholder' => ts('- select -'),
-		 );
-
-		 $form->add('select', 'includeGroups',
-		 ts('Include Group(s)'),
-		 $groups,
-		 FALSE,
-		 $select2style
-		 );
-
-		 */
-		if( $tmpEntitlement->isRunningCiviCRM_4_5()){
-
+		
 			$select2style = array(
 					'multiple' => TRUE,
 					'style' => 'width: 100%; max-width: 60em;',
@@ -168,27 +182,7 @@ implements CRM_Contact_Form_Search_Interface
 
 
 
-		}else{
-			$form->add('select', 'group_of_contact', ts('Contact is in the group'), $group_ids, FALSE,
-					array('id' => 'group_of_contact', 'multiple' => 'multiple', 'title' => ts('-- select --'))
-					);
-
-
-
-			$form->add('select', 'membership_org_of_contact', ts('Contact has Membership In'), $org_ids, FALSE,
-					array('id' => 'membership_org_of_contact', 'multiple' => 'multiple', 'title' => ts('-- select --'))
-					);
-
-			$form->add('select', 'membership_type_of_contact', ts('Contact has the membership of type'), $mem_ids, FALSE,
-					array('id' => 'membership_type_of_contact', 'multiple' => 'multiple', 'title' => ts('-- select --'))
-					);
-
-			$form->add('select', 'relative_time', ts('Timeframe relative to today'), $relative_times_choices, FALSE,
-					array('id' => 'relative_time', 'multiple' => 'multiple', 'title' => ts('-- select --'))
-					);
-
-		}
-
+		
 
 
 
@@ -211,7 +205,24 @@ implements CRM_Contact_Form_Search_Interface
 
 		$form->addDate('end_date', ts('Age Based on Date'), false, array( 'formatType' => 'custom' ) );
 
-		$comm_prefs =  $searchTools->getCommunicationPreferencesForSelectList();
+		// Get communication preferences
+		$comm_prefs =  array();
+		$api_result = civicrm_api3('OptionValue', 'get', array(
+				'sequential' => 1,
+				'option_group_id' => "preferred_communication_method",
+				'is_active' => 1,
+				'options' => array('sort' => "label"),
+		));
+		$comm_prefs[''] = '  -- Select -- ';;
+		if( $api_result['is_error'] == 0 ){
+			$tmp_api_values = $api_result['values'];
+			foreach($tmp_api_values as $cur){
+		
+				$tmp_id = $cur['id'];
+				$comm_prefs[$tmp_id] = $cur['label'];
+				 
+			}
+		}
 
 		$comm_prefs_select = $form->add  ('select', 'comm_prefs', ts('Communication Preference'),
 				$comm_prefs,
@@ -226,16 +237,9 @@ implements CRM_Contact_Form_Search_Interface
 	 
 	function templateFile( ) {
 
-		require_once('utils/Entitlement.php');
-		$tmpEntitlement = new Entitlement();
-
-		if( $tmpEntitlement->isRunningCiviCRM_4_5()){
-			 
-			return 'CRM/Contact/Form/Search/Custom.tpl';
-		}else{
-			return 'CRM/Contact/Form/Search/Custom/Sample.tpl';
-
-		}
+		
+		return 'CRM/Contact/Form/Search/Custom.tpl';
+		
 	}
 	 
 	 
@@ -249,7 +253,7 @@ implements CRM_Contact_Form_Search_Interface
 				/******************************************************************************/
 				// Get data for contacts
 
-				$grouby = "";
+				$groupby = "";
 				if ( $onlyIDs ) {
 					$select  = "contact_a.id as contact_id";
 				} else {
@@ -299,12 +303,9 @@ implements CRM_Contact_Form_Search_Interface
 
 				}
 
-				// make sure selected smart groups are cached in the cache table
+				
 				$group_of_contact = $this->_formValues['group_of_contact'];
-				require_once('utils/CustomSearchTools.php');
-				$searchTools = new CustomSearchTools();
-				$searchTools::verifyGroupCacheTable($group_of_contact ) ;
-
+				
 
 				$from  = $this->from( );
 				$where = $this->where( $includeContactIDs ) ;
@@ -365,7 +366,10 @@ implements CRM_Contact_Form_Search_Interface
 		 
 		if(strlen( $comm_prefs = $this->_formValues['comm_prefs']) > 0  ){
 			$tmp_email_join = "LEFT JOIN civicrm_email ON contact_a.id = civicrm_email.contact_id AND civicrm_email.is_primary = 1 ";
+		}else{
+			$tmp_email_join = ""; 
 		}
+		
 		$tmp_from = " civicrm_contact contact_a
 		$tmp_email_join ".$tmp_group_join.$tmp_mem_join;
 			
@@ -396,15 +400,14 @@ implements CRM_Contact_Form_Search_Interface
 
 		}
 
-		require_once('utils/CustomSearchTools.php');
-		$searchTools = new CustomSearchTools();
-
+		
 
 		$comm_prefs = $this->_formValues['comm_prefs'];
+		// TODO: check comm_prefs
+	
 
-		$searchTools->updateWhereClauseForCommPrefs($comm_prefs, $clauses ) ;
-
-		$tmp_sql_list = $searchTools->getSQLStringFromArray($groups_of_individual);
+		$tmp_sql_list = implode(",", $groups_of_individual);
+	
 		if(strlen($tmp_sql_list) > 0 ){
 
 			// need to check regular groups as well as smart groups.
@@ -416,7 +419,8 @@ implements CRM_Contact_Form_Search_Interface
 		$membership_types_of_con = $this->_formValues['membership_type_of_contact'];
 
 
-		$tmp_membership_sql_list = $searchTools->convertArrayToSqlString( $membership_types_of_con ) ;
+	
+		$tmp_membership_sql_list = implode(",", $membership_types_of_con );
 		if(strlen($tmp_membership_sql_list) > 0 ){
 			$clauses[] = "memberships.membership_type_id IN (".$tmp_membership_sql_list.")" ;
 			$clauses[] = "mem_status.is_current_member = '1'";
@@ -426,7 +430,9 @@ implements CRM_Contact_Form_Search_Interface
 
 		// 'membership_org_of_contact'
 		$membership_org_of_con = $this->_formValues['membership_org_of_contact'];
-		$tmp_membership_org_sql_list = $searchTools->convertArrayToSqlString( $membership_org_of_con ) ;
+		
+		$tmp_membership_org_sql_list = implode("," , $membership_org_of_con );
+		
 		if(strlen($tmp_membership_org_sql_list) > 0 ){
 
 			$clauses[] = "mt.member_of_contact_id IN (".$tmp_membership_org_sql_list.")" ;
@@ -452,7 +458,7 @@ implements CRM_Contact_Form_Search_Interface
 
 			}
 		}
-		if( strlen( $rel_time_str) > 0){
+		if( isset( $rel_time_str ) && strlen( $rel_time_str) > 0){
 			$rel_time_str = $rel_time_str.")";
 			$clauses[] = $rel_time_str;
 		}
@@ -546,9 +552,8 @@ implements CRM_Contact_Form_Search_Interface
 
 	function alterRow( &$row ) {
 
-		require_once('utils/Entitlement.php');
-		$tmpEntitlement = new Entitlement();
-		if( $tmpEntitlement->showJewishFeatures()){
+	// TODO: Check if Hebrew Calendar extension is enabled.
+		if( 1 == 0 ){
 
 			require_once 'CRM/Hebrew/HebrewDates.php';
 
@@ -581,7 +586,7 @@ implements CRM_Contact_Form_Search_Interface
 		return $dao->N;
 	}
 	 
-	function contactIDs( $offset = 0, $rowcount = 0, $sort = null) {
+	function contactIDs( $offset = 0, $rowcount = 0, $sort = null, $returnSQL = false ) {
 		return $this->all( $offset, $rowcount, $sort, false, true );
 	}
 	 

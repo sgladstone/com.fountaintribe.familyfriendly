@@ -22,6 +22,9 @@ implements CRM_Contact_Form_Search_Interface {
 		/**
 		 * Define the columns for search result rows
 		 */
+		
+		// TODO: check if "fancy tokens" extension is enabled, so we can get joint_greeting
+		if( 1 ==0 ){
 		$this->_columns = array(
 				ts('Name') => 'sort_name',
 				ts('Spouse Name')   => 'name_b',
@@ -34,6 +37,21 @@ implements CRM_Contact_Form_Search_Interface {
 				ts('Occasion Type' ) => 'oc_type',
 				ts('Contact ID') => 'contact_id',
 		);
+		}else{
+			$this->_columns = array(
+					ts('Name') => 'sort_name',
+					ts('Spouse Name')   => 'name_b',
+					ts('Date') => 'oc_date',
+					ts('Date (sortable)') => 'anniversary_month_and_day_sortable',
+					ts('Year of Wedding') => 'wedding_year',
+					// ts('Current Num. Years Married') => 'marriage_length',
+					ts('Upcoming Num. Years Married') => 'upcoming_length',
+					ts('Occasion Type' ) => 'oc_type',
+					ts('Contact ID') => 'contact_id',
+			);
+			
+			
+		}
 	}
 
 
@@ -48,9 +66,7 @@ implements CRM_Contact_Form_Search_Interface {
 		 * Define the search form fields here
 		 */
 
-		require_once('utils/Entitlement.php');
-		$tmpEntitlement = new Entitlement();
-
+		
 		$month =
 		array( ''   => ' -- select -- ' , '1' => 'January', '2' => 'February', '3' => 'March',
 				'4' => 'April', '5' => 'May' , '6' => 'June', '7' => 'July', '8' => 'August' , '9' => 'September' , '10' => 'October' , '11' => 'November' , '12' => 'December') ;
@@ -100,34 +116,54 @@ implements CRM_Contact_Form_Search_Interface {
 				'years_married',
 				ts( 'Number of Years Married' ) );
 
-		require_once('utils/CustomSearchTools.php');
-		$searchTools = new CustomSearchTools();
-		// $group_ids = $searchTools->getRegularGroupsforSelectList();
+		
+	
 
-		$group_ids =   CRM_Core_PseudoConstant::group();
+		$group_ids =   CRM_Core_PseudoConstant::nestedGroup();
 
-		$mem_ids = $searchTools->getMembershipsforSelectList();
-
-
-
-		$org_ids = $searchTools->getMembershipOrgsforSelectList();
-		/*
-
-		$tmp_select = $form->add  ('select', 'group_of_individual', ts('Individual is in the group'),
-		$group_ids,
-		false);
-		 
-		$tmp_select->setMultiple(true);
-
-		$mem_ids = $searchTools->getMembershipsforSelectList();
-		$tmp_mem_select = $form->add  ('select', 'membership_type_of_contact', ts('Contact has the membership of type'),
-		$mem_ids,
-		false);
-		 
-		$tmp_mem_select->setMultiple(true);
-		*/
-
-	 if( $tmpEntitlement->isRunningCiviCRM_4_5()){
+	
+		$cur_domain_id = "-1";
+			
+		$result = civicrm_api3('Domain', 'get', array(
+				'sequential' => 1,
+				'current_domain' => "",
+		));
+			
+		if( $result['is_error'] == 0 ){
+			$cur_domain_id = $result['id'];
+		
+		}
+		// get membership ids and org contact ids.
+		$mem_ids = array();
+		$org_ids = array();
+		$api_result = civicrm_api3('MembershipType', 'get', array(
+				'sequential' => 1,
+				'is_active' => 1,
+				'domain_id' =>  $cur_domain_id ,
+				'options' => array('sort' => "name"),
+		));
+		
+		if( $api_result['is_error'] == 0 ){
+			$tmp_api_values = $api_result['values'];
+			foreach($tmp_api_values as $cur){
+		
+				$tmp_id = $cur['id'];
+				$mem_ids[$tmp_id] = $cur['name'];
+					
+				$org_id = $cur['member_of_contact_id'];
+				// get display name of org
+				$result = civicrm_api3('Contact', 'getsingle', array(
+						'sequential' => 1,
+						'id' => $org_id ,
+				));
+				$org_ids[$org_id] = $result['display_name'];
+		
+					
+			}
+		
+		}
+			
+		
 
 	 	$select2style = array(
 	 			'multiple' => TRUE,
@@ -166,34 +202,24 @@ implements CRM_Contact_Form_Search_Interface {
 	 			);
 
 
-
-	 }else{
-	 	$form->add('select', 'group_of_contact', ts('Contact is in the group'), $group_ids, FALSE,
-	 			array('id' => 'group_of_contact', 'multiple' => 'multiple', 'title' => ts('-- select --'))
-	 			);
-
-
-
-	 	$form->add('select', 'membership_org_of_contact', ts('Contact has Membership In'), $org_ids, FALSE,
-	 			array('id' => 'membership_org_of_contact', 'multiple' => 'multiple', 'title' => ts('-- select --'))
-	 			);
-
-	 	$form->add('select', 'membership_type_of_contact', ts('Contact has the membership of type'), $mem_ids, FALSE,
-	 			array('id' => 'membership_type_of_contact', 'multiple' => 'multiple', 'title' => ts('-- select --'))
-	 			);
-
-	 	$form->add('select', 'relative_time', ts('Timeframe relative to today'), $relative_times_choices, FALSE,
-	 			array('id' => 'relative_time', 'multiple' => 'multiple', 'title' => ts('-- select --'))
-	 			);
-
-	 }
-
-
-
-
-
-
-	 $comm_prefs =  $searchTools->getCommunicationPreferencesForSelectList();
+	 	// Get communication preferences
+	 	$comm_prefs =  array();
+	 	$api_result = civicrm_api3('OptionValue', 'get', array(
+	 			'sequential' => 1,
+	 			'option_group_id' => "preferred_communication_method",
+	 			'is_active' => 1,
+	 			'options' => array('sort' => "label"),
+	 	));
+	 	$comm_prefs[''] = '  -- Select -- ';;
+	 	if( $api_result['is_error'] == 0 ){
+	 		$tmp_api_values = $api_result['values'];
+	 		foreach($tmp_api_values as $cur){
+	 	
+	 			$tmp_id = $cur['id'];
+	 			$comm_prefs[$tmp_id] = $cur['label'];
+	 				
+	 		}
+	 	}
 
 	 $comm_prefs_select = $form->add  ('select', 'comm_prefs', ts('Communication Preference'),
 	 		$comm_prefs,
@@ -212,14 +238,18 @@ implements CRM_Contact_Form_Search_Interface {
 
 	function alterRow( &$row ) {
 		 
-		$params = array(
-				'version' => 3,
-				'sequential' => 1,
-				'contact_id' => $row['contact_id'],
-		);
-		$result = civicrm_api('JointGreetings', 'getsingle', $params);
-
-		$row['joint_greeting'] = $result['greetings.joint_casual'];
+		
+		// TODO: check if "fancy tokens" extension is enabled, so we can get joint_greeting
+		if( 1 ==0 ){
+			$params = array(
+					'version' => 3,
+					'sequential' => 1,
+					'contact_id' => $row['contact_id'],
+			);
+			$result = civicrm_api('JointGreetings', 'getsingle', $params);
+	
+			$row['joint_greeting'] = $result['greetings.joint_casual'];
+		}
 
 	}
 
@@ -228,16 +258,9 @@ implements CRM_Contact_Form_Search_Interface {
 	 * Define the smarty template used to layout the search form and results listings.
 	 */
 	function templateFile( ) {
-		require_once('utils/Entitlement.php');
-		$tmpEntitlement = new Entitlement();
-
-		if( $tmpEntitlement->isRunningCiviCRM_4_5()){
 			 
-			return 'CRM/Contact/Form/Search/Custom.tpl';
-		}else{
-			return 'CRM/Contact/Form/Search/Custom/Sample.tpl';
-
-		}
+		return 'CRM/Contact/Form/Search/Custom.tpl';
+		
 		 
 	}
 	 
@@ -297,13 +320,7 @@ implements CRM_Contact_Form_Search_Interface {
 				}
 
 
-				// make sure selected smart groups are cached in the cache table
 				$group_of_contact = $this->_formValues['group_of_contact'];
-
-				require_once('utils/CustomSearchTools.php');
-				$searchTools = new CustomSearchTools();
-				$searchTools::verifyGroupCacheTable($group_of_contact ) ;
-
 
 				$from  = $this->from( );
 				$where = $this->where( $includeContactIDs ) ;
@@ -379,6 +396,8 @@ implements CRM_Contact_Form_Search_Interface {
 
 		if(strlen( $comm_prefs = $this->_formValues['comm_prefs']) > 0  ){
 			$tmp_email_join = "LEFT JOIN civicrm_email ON contact_a.id = civicrm_email.contact_id AND civicrm_email.is_primary = 1 ";
+		}else{
+			$tmp_email_join = "";
 		}
 
 		$tmp_from =  " civicrm_contact AS contact_a
@@ -407,17 +426,14 @@ implements CRM_Contact_Form_Search_Interface {
 
 		$groups_of_individual = $this->_formValues['group_of_contact'];
 
-		require_once('utils/CustomSearchTools.php');
-		$searchTools = new CustomSearchTools();
-
-
+		
 		$comm_prefs = $this->_formValues['comm_prefs'];
 
-		$searchTools->updateWhereClauseForCommPrefs($comm_prefs, $clauses ) ;
+		// TODO: check comm_prefs
 
 
 
-		$tmp_sql_list = $searchTools->getSQLStringFromArray($groups_of_individual);
+		$tmp_sql_list = implode( ",", $groups_of_individual);
 
 
 
@@ -433,7 +449,7 @@ implements CRM_Contact_Form_Search_Interface {
 		$membership_types_of_con = $this->_formValues['membership_type_of_contact'];
 
 
-		$tmp_membership_sql_list = $searchTools->convertArrayToSqlString( $membership_types_of_con ) ;
+		$tmp_membership_sql_list = implode( ",",  $membership_types_of_con ) ;
 		if(strlen($tmp_membership_sql_list) > 0 ){
 			$clauses[] = "(  (memberships_a.membership_type_id IN (".$tmp_membership_sql_list.") AND mem_status_a.is_current_member = '1' AND mem_status_a.is_active = '1' ) OR
 				 (memberships_b.membership_type_id IN (".$tmp_membership_sql_list.") AND mem_status_b.is_current_member = '1' AND mem_status_b.is_active = '1' )  )";
@@ -444,7 +460,7 @@ implements CRM_Contact_Form_Search_Interface {
 		// 'membership_org_of_contact'
 
 		$membership_org_of_con = $this->_formValues['membership_org_of_contact'];
-		$tmp_membership_org_sql_list = $searchTools->convertArrayToSqlString( $membership_org_of_con ) ;
+		$tmp_membership_org_sql_list = implode( ",",  $membership_org_of_con ) ;
 		if(strlen($tmp_membership_org_sql_list) > 0 ){
 			// print "<br>membership orgs: <br>".$tmp_membership_org_sql_list;
 				
@@ -476,7 +492,7 @@ implements CRM_Contact_Form_Search_Interface {
 
 			}
 		}
-		if( strlen( $rel_time_str) > 0){
+		if(isset( $rel_time_str ) &&  strlen( $rel_time_str) > 0){
 			$rel_time_str = $rel_time_str.")";
 			$clauses[] = $rel_time_str;
 		}
@@ -551,7 +567,7 @@ implements CRM_Contact_Form_Search_Interface {
 		return $dao->N;
 	}
 	 
-	function contactIDs( $offset = 0, $rowcount = 0, $sort = null) {
+	function contactIDs( $offset = 0, $rowcount = 0, $sort = null,  $returnSQL = false) {
 		return $this->all( $offset, $rowcount, $sort, false, true );
 	}
 	 
