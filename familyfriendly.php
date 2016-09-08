@@ -18,6 +18,28 @@ function familyfriendly_civicrm_alterContent(  &$content, $context, $tplName, &$
 	
 }
 
+function familyfriendly_civicrm_searchTasks( $objectType, &$tasks ) {
+	
+	
+	if($objectType == 'contact' ) {
+			$tasks[] = array(
+					'title' => "Update 'Use another contact's address'",
+					'class' => 'fountaintribe_Contact_Form_Task_UpdateSharesAddressWith',
+			);
+			
+			if (user_access('administer CiviCRM') ){
+				 
+				$tasks[] = array(
+						'title' => 'Update permissions on relationships',
+						'class' => 'fountaintribe_Contact_Form_Task_UpdateRelPermissions',
+				);
+			}
+	
+	}
+	
+	
+}
+
 /**
  * Implements hook_civicrm_config().
  *
