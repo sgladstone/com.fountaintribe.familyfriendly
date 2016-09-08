@@ -17,7 +17,11 @@ class fountaintribe_Contact_Form_Task_UpdateSharesAddressWith extends CRM_Contac
 		// $notify_options = array();
 
 
-		 
+		if( isset($count)){
+				
+		}else{
+			$count = "";
+		}
 		 
 		$this->addDefaultButtons( ts('Update Addresses Now') );
 		$this->assign('found_rows', $count);

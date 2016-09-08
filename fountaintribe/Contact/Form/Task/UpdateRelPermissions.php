@@ -33,6 +33,11 @@ class fountaintribe_Contact_Form_Task_UpdateRelPermissions extends CRM_Contact_F
 		 
 		 
 		$this->addDefaultButtons( ts('Update Relationships Now') );
+		if( isset($count)){
+			
+		}else{
+			$count = ""; 
+		}
 		$this->assign('found_rows', $count);
 	}
 
